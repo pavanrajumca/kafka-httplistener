@@ -1,0 +1,10 @@
+kafka: 
+  broker: ${NSB_KAFKA_HOST}
+  consumer:
+    topic: ${CONSUMER_TOPIC}
+  producer:
+    topic: ${PRODUCER_TOPIC}  
+server:
+  port: 8090
+listener:
+  topicList: ${CONSUMER_TOPIC},${PRODUCER_TOPIC},NormalAuditTopic

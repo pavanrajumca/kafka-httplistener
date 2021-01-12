@@ -1,0 +1,228 @@
+apiVersion: v1
+kind: Template
+metadata:
+  creationTimestamp: null
+  name: nsbmobile5g_nsbhttplistener_oc_template
+objects:
+# defines the build configuration (using the Docker strategy)
+- kind: BuildConfig
+  apiVersion: v1
+  metadata:
+    name: ${APPLICATION_NAME}
+    annotations:
+      pipeline.alpha.openshift.io/uses: '[{"name": "${APPLICATION_NAME}", "namespace": "", "kind": "DeploymentConfig"}]'
+    labels:
+      app: ${APPLICATION_NAME}
+  spec:
+    output:
+      to:
+        kind: ImageStreamTag
+        name: '${APPLICATION_NAME}:latest'
+    runPolicy: Serial
+    source:
+      binary:
+        asFile: ${APPLICATION_NAME}-0.0.1-SNAPSHOT.jar
+      dockerfile: "FROM image-registry.openshift-image-registry.svc:5000/openshift/redhat-openjdk18-openshift:latest\nEXPOSE 8080\nENV  LOGLEVEL=info \\\n ACTIVE_PROFILE=dev \\\n   CAMELLOGLEVEL=info \\\n   APPLOGLEVEL=info \\\n      APPLOG=/tmp/${APPLICATION_NAME}/${APPLICATION_NAME}.log \\\n\t CONSOLELOG=/tmp/${APPLICATION_NAME}/${APPLICATION_NAME}-console.log \\\n\t ERRORLOG=/tmp/${APPLICATION_NAME}/${APPLICATION_NAME}-error.log\nCOPY $JAR_NAME /app.jar\nENTRYPOINT java -Xms256m -Xmx512m -Dspring.profiles.active=$ACTIVE_PROFILE -DlogLevel=$LOGLEVEL -DcamellogLevel=$CAMELLOGLEVEL  -DapplogLevel=$APPLOGLEVEL -Dloglocation=$APPLOG -Dconsoleloglocation=$CONSOLELOG -Derrorloglocation=$ERRORLOG -Djava.security.egd=file:/dev/./urandom -jar /app.jar"
+    type: Binary
+    strategy:
+      dockerStrategy:
+        env:
+          - name: JAR_NAME
+            value: ${APPLICATION_NAME}-0.0.1-SNAPSHOT.jar
+        from:
+          kind: ImageStreamTag
+          name: 'redhat-openjdk18-openshift:latest'
+          namespace: openshift
+    triggers: []
+
+- kind: BuildConfig
+  apiVersion: v1
+  metadata:
+    annotations:
+      pipeline.alpha.openshift.io/uses: '[{"name": "${APPLICATION_NAME}", "namespace": "", "kind": "DeploymentConfig"}]'
+    labels:
+      app: ${APPLICATION_NAME}
+    name: ${APPLICATION_NAME}-pipeline
+  spec:
+    strategy:
+      type: JenkinsPipeline
+      jenkinsPipelineStrategy: 
+        jenkinsfilePath: Jenkinsfile
+    source:
+      type: Git
+      git:
+        ref: ${APPLICATION_NAME}_dev
+        uri: ${GIT_URL}
+        name: bitbucket
+      sourceSecret:
+        name: bbpull
+    #triggers:
+    #- type: "Bitbucket"
+     # bitbucket:
+      #  secret: FW4QqQ0VE2cVjsz9CK11oZJ3doat6mLZYQr3l265Emg
+- apiVersion: v1
+  kind: ImageStream
+  metadata:
+    name: ${APPLICATION_NAME}
+- apiVersion: v1
+  kind: DeploymentConfig
+  metadata:
+    labels:
+      app: ${APPLICATION_NAME}
+    name: ${APPLICATION_NAME}
+  spec:
+    replicas: 1
+    selector:
+      app: ${APPLICATION_NAME}
+      deploymentconfig: ${APPLICATION_NAME}
+    strategy:
+      activeDeadlineSeconds: 21600
+      resources: {}
+      rollingParams:
+        intervalSeconds: 1
+        maxSurge: 25%
+        maxUnavailable: 25%
+        timeoutSeconds: 600
+        updatePeriodSeconds: 1
+      type: Rolling
+    template:
+      metadata:
+        labels:
+          app: ${APPLICATION_NAME}
+          deploymentconfig: ${APPLICATION_NAME}
+      spec:
+        containers:
+        - env:
+          - name: APPLOG
+            value: ${APPLICATION_LOG}
+          - name: CONSOLELOG
+            value: ${CONSOLE_LOG}
+          - name: LOGLEVEL
+            value: ${LOG_LEVEL}
+          - name: ERRORLOG
+            value: ${ERROR_LOG}
+          - name: CAMELLOGLEVEL
+            value: ${CAMEL_LOG_LEVEL}
+          - name: APPLOGLEVEL
+            value: ${APPLICATION_LOG_LEVEL} 
+          - name: NSB_KAFKA_HOST
+            value: ${APPLICATION_KAFKA_HOST}
+          - name: CONSUMER_TOPIC
+            value: ${APP_CONSUMER_TOPIC}
+          - name: PRODUCER_TOPIC
+            value: ${APP_PRODUCER_TOPIC}
+          - name: ACTIVE_PROFILE
+            value: ${APPLICATION_ACTIVE_PROFILE}
+          - name: JAEGER_SERVICE_NAME
+            value: ${JAEGER_SERVICE_NAME}
+          - name: JAEGER_AGENT_HOST
+            valueFrom:
+                fieldRef:
+                    fieldPath: status.hostIP
+          - name: JAEGER_SAMPLER_PARAM
+            value: ${JAEGER_SAMPLER_PARAM}
+          
+            
+          image: ${APPLICATION_NAME}
+          imagePullPolicy: Always
+          name: ${APPLICATION_NAME}
+          ports:
+          - containerPort: 8080
+            protocol: TCP
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+
+    test: false
+    triggers:
+    - type: ConfigChange
+    - imageChangeParams:
+        automatic: true
+        containerNames:
+        - ${APPLICATION_NAME}
+        from:
+          kind: ImageStreamTag
+          name: ${APPLICATION_NAME}:latest
+      type: ImageChange
+
+- apiVersion: v1
+  kind: Route
+  metadata:
+    labels:
+      app: ${APPLICATION_NAME}
+    name: ${APPLICATION_NAME}
+  spec:
+    port:
+      targetPort: 8080-tcp
+    to:
+      kind: Service
+      name: ${APPLICATION_NAME}
+      weight: 100
+    wildcardPolicy: None
+
+- apiVersion: v1
+  kind: Service
+  metadata:
+    labels:
+      app: ${APPLICATION_NAME}
+    name: ${APPLICATION_NAME}
+  spec:
+    ports:
+    - name: 8080-tcp
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
+    selector:
+      deploymentconfig: ${APPLICATION_NAME}
+    sessionAffinity: None
+    type: ClusterIP
+
+parameters:
+- description: The name for the application.
+  name: APPLICATION_NAME
+  value: nsbhttplistener
+- description: BitBucket repository URL.
+  name: GIT_URL
+  value: "https://src.singtelnwk.com/scm/dpnsbmob/nsbhttplistener.git"
+- description: The log application file and path for the application.
+  name: APPLICATION_LOG
+  value: "/tmp/nsbhttplistener/nsbhttplistener.log"
+- description: The console log file and path for the application.
+  name: CONSOLE_LOG
+  value: "/tmp/nsbhttplistener/nsbhttplistener-console.log"
+- description: The error log file and path for the application.
+  name: ERROR_LOG
+  value: "/tmp/nsbhttplistener/nsbhttplistener-error.log"
+- description: INFO or DEBUG log level.
+  name: LOG_LEVEL
+  value: info
+- description: INFO or DEBUG camel log level.
+  name: CAMEL_LOG_LEVEL
+  value: info
+- description: INFO or DEBUG application log level.
+  name: APPLICATION_LOG_LEVEL
+  value: info
+- description: Active profile.
+  name: APPLICATION_ACTIVE_PROFILE
+  value: openshift
+- description: Jaeger Service Name.
+  name: JAEGER_SERVICE_NAME
+  value: nsbhttplistener
+- description: Jaeger Sampler Parameter.
+  name: JAEGER_SAMPLER_PARAM
+  value: "1.0" 
+- description: Consumer Topic.
+  name: APP_CONSUMER_TOPIC
+  value: SvcActConfigReplyTopic
+- description: Producer Topic
+  name: APP_PRODUCER_TOPIC
+  value: NormalHttpSubProfile5gActTransformTopic
+
+- description: Hostname:port of Kafka
+  name: APPLICATION_KAFKA_HOST
+  value: cp-kafka.dp-common-event-streaming.svc.cluster.local:9092

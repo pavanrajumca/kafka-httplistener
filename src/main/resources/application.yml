@@ -1,0 +1,199 @@
+spring:
+  profiles:
+    active: dev-unittest
+
+---
+spring:
+  profiles: dev-normal
+server:
+  port: 8080
+  servlet:
+    context-path: /nsb
+kafka:
+  broker: ${NSB_KAFKA_HOST}
+  acks: 1
+  group-id: eda
+  consumer:
+    topic: ${CONSUMER_TOPIC}
+    autoOffsetReset: earliest
+    consumersCount: 1
+  producer:
+    topic: ${PRODUCER_TOPIC}
+  audit:
+    topic: NormalAuditTopic
+  error:
+    topic: NormalErrorTopic
+  request-reply:
+    timeout-ms: 5000
+management:
+  health:
+    mongo:
+      enabled: false
+    kafka:
+      enabled: false
+  endpoint:
+    health:
+      show-details: always
+  endpoints:
+    web:
+      exposure:
+        include: health
+      base-path: /monitor
+    enabled-by-default: true
+endpoints:
+  mongo:
+    enabled: true
+mongo:
+  timeout: 5000
+maxkafka:
+  timeout: 5000
+dbcollection: seqmaster
+enable.auto.commit: true
+auto.commit.interval.ms: 100
+camel.springboot.use-mdc-logging: true
+replication_factor: transaction.state.log.replication.factor
+keyRaw: f32ddcebf6bf7bf422719c0b890178e5
+ivRaw: 7792c8514cba178b255c0f2d7fc43111
+listener:
+  topicList: NormalAuditTopic,NormalErrorTopic
+
+eda:
+  service: /service
+camel:
+  component:
+    servlet:
+      mapping:
+        enabled: true
+        context-path: /api/*
+schemes: http
+swaggerContextPath: /nsb/api
+---
+spring:
+  profiles: openshift
+server:
+  port: 8080
+  servlet:
+    context-path: /nsb
+kafka:
+  broker: ${NSB_KAFKA_HOST}
+  acks: 1
+  group-id: eda
+  consumer:
+    topic: ${CONSUMER_TOPIC}
+    autoOffsetReset: earliest
+    consumersCount: 1
+  producer:
+    topic: ${PRODUCER_TOPIC}
+  audit:
+    topic: NormalAuditTopic
+  error:
+    topic: NormalErrorTopic
+  request-reply:
+    timeout-ms: 100000
+management:
+  health:
+    mongo:
+      enabled: false
+    kafka:
+      enabled: false
+  endpoint:
+    health:
+      show-details: always
+  endpoints:
+    web:
+      exposure:
+        include: health
+      base-path: /monitor
+    enabled-by-default: true
+endpoints:
+  mongo:
+    enabled: true
+mongo:
+  timeout: 5000
+maxkafka:
+  timeout: 5000
+dbcollection: seqmaster
+enable.auto.commit: true
+auto.commit.interval.ms: 100
+camel.springboot.use-mdc-logging: true
+replication_factor: transaction.state.log.replication.factor
+keyRaw: f32ddcebf6bf7bf422719c0b890178e5
+ivRaw: 7792c8514cba178b255c0f2d7fc43111
+listener:
+  topicList: NormalAuditTopic,NormalErrorTopic
+
+eda:
+  service: /service
+camel:
+  component:
+    servlet:
+      mapping:
+        enabled: true
+        context-path: /api/*
+schemes: http
+swaggerContextPath: /nsb/api
+---
+spring:
+  profiles: dev-unittest
+server:
+  port: 8011
+  servlet:
+    context-path: /nsb
+kafka:
+  broker: localhost:9092
+  acks: 1
+  group-id: eda
+  consumer:
+    topic: SvcActConfigReplyTopic
+    autoOffsetReset: earliest
+    consumersCount: 1
+  producer:
+    topic: NormalHttpSubProfile5gActTransformTopic
+  audit:
+    topic: NormalAuditTopic
+  error:
+    topic: NormalErrorTopic
+  request-reply:
+    timeout-ms: 150000
+management:
+  health:
+    mongo:
+      enabled: false
+    kafka:
+      enabled: false
+  endpoint:
+    health:
+      show-details: always
+  endpoints:
+    web:
+      exposure:
+        include: health
+      base-path: /monitor
+    enabled-by-default: true
+endpoints:
+  mongo:
+    enabled: true
+mongo:
+  timeout: 5000
+maxkafka:
+  timeout: 5000
+dbcollection: seqmaster
+enable.auto.commit: true
+auto.commit.interval.ms: 100
+camel.springboot.use-mdc-logging: true
+replication_factor: transaction.state.log.replication.factor
+keyRaw: f32ddcebf6bf7bf422719c0b890178e5
+ivRaw: 7792c8514cba178b255c0f2d7fc43111
+listener:
+  topicList: NormalAuditTopic,NormalErrorTopic
+
+eda:
+  service: /service
+camel:
+  component:
+    servlet:
+      mapping:
+        enabled: true
+        context-path: /api/*
+schemes: http
+swaggerContextPath: /nsb/api
